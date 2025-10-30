@@ -176,7 +176,7 @@ configs_df = pd.DataFrame(configs)
 st.dataframe(configs_df, hide_index=True)
 
 # ============================================================
-# Step 4 — Test & Validation
+# Step 4 — Test & Validation (linked to Step 5)
 # ============================================================
 
 st.header("🧪 Step 4 — Test & Validation")
@@ -185,6 +185,7 @@ Once configurations are generated, **virtual or physical tests** are conducted t
 Results are compared against system requirements to validate design compliance.
 """)
 
+# Dati di test
 test_data = pd.DataFrame({
     'Config ID': [f'CFG-{i:02d}' for i in range(1, 9)],
     'Flow rate (m³/h)': [1950, 2050, 2100, 2000, 2150, 2200, 2100, 2250],
@@ -194,17 +195,8 @@ test_data = pd.DataFrame({
 })
 test_data = pd.merge(test_data, configs_df[['Config ID','Total Cost (€)','Lead Time (weeks)']], on='Config ID', how='left')
 
-# Baseline compliance
-test_data['Meets Flow'] = test_data['Flow rate (m³/h)'] >= 2000
-test_data['Meets Eff'] = test_data['Efficiency (%)'] >= 60
-test_data['Meets Noise'] = test_data['Noise (dB)'] <= 45
-test_data['Meets Curr'] = test_data['Current (A)'] <= 2.0
-test_data['OK count'] = test_data[['Meets Flow','Meets Eff','Meets Noise','Meets Curr']].sum(axis=1)
-test_data['Status'] = test_data['OK count'].apply(lambda x: '✅ OK' if x==4 else '⚠️ NOK')
-st.dataframe(test_data, hide_index=True)
-
 # ============================================================
-# Step 5 — Dynamic Compliance Visualization
+# Step 5 — Dynamic Compliance Visualization & Pareto Analysis
 # ============================================================
 
 st.header("📊 Step 5 — Dynamic Compliance Visualization & Pareto Analysis")
@@ -226,6 +218,7 @@ with cols[3]:
 with cols[4]:
     req_cost = st.slider('Maximum Cost (€)', 20, 200, 100, step=5)
 
+# Calcolo dinamico dei requisiti
 test_data['Meets Flow'] = test_data['Flow rate (m³/h)'] >= req_flow
 test_data['Meets Eff'] = test_data['Efficiency (%)'] >= req_eff
 test_data['Meets Noise'] = test_data['Noise (dB)'] <= req_noise
@@ -234,6 +227,11 @@ test_data['Meets Cost'] = test_data['Total Cost (€)'] <= req_cost
 test_data['OK count'] = test_data[['Meets Flow','Meets Eff','Meets Noise','Meets Curr','Meets Cost']].sum(axis=1)
 test_data['Status'] = test_data['OK count'].apply(lambda x: '✅ OK' if x==5 else '⚠️ NOK')
 
+# Mostra tabella aggiornata (Step 4)
+st.subheader("Validation Table — Updated with Current Requirements")
+st.dataframe(test_data, hide_index=True)
+
+# Visualizzazione Pareto (Step 5)
 st.markdown("""
 Pareto analysis identifies **optimal trade-offs** — solutions that cannot be improved in one aspect without  
 compromising another. This helps decision-makers choose the best configurations.
@@ -252,8 +250,6 @@ fig_pareto = px.scatter(
     text='Config ID',
     color_discrete_map={'✅ OK': '#2E8B57', '⚠️ NOK': '#B22222'}
 )
-# change position of the text labels (options: 'top left', 'top center', 'top right', 
-# 'middle left', 'middle center', 'middle right', 'bottom left', 'bottom center', 'bottom right')
 fig_pareto.update_traces(textposition='top center', textfont=dict(size=11))
 st.plotly_chart(fig_pareto, use_container_width=True)
 
