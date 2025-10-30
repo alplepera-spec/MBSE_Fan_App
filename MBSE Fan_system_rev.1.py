@@ -8,14 +8,15 @@ import numpy as np
 import plotly.graph_objects as go
 
 # ============================================================
-# MBSE Fan System Configurator
+# MBSE Fan System Configurator (Example of application)
 # Version: 2025 — Full Illustrated Edition
 # ============================================================
 
-st.set_page_config(page_title="MBSE Fan System Configurator", layout="wide", page_icon="🧠")
+st.set_page_config(page_title="MBSE Fan System Configurator (Example of application)", layout="wide", page_icon="🧠")
 
 # --- Custom Style ---
 st.markdown("""
+
 <style>
     body {
         background-color: #FFFFFF;
@@ -40,7 +41,7 @@ st.markdown("""
 # Header & Introduction
 # ============================================================
 
-st.title("🧠 MBSE Fan System Configurator")
+st.title("🧠 MBSE Fan System Configurator (Example of application)")
 st.markdown("**Apply a model-based methodology to design and optimise fan systems based on performance, cost, and time.**")
 
 st.header("💡 Introduction — What is Model-Based Systems Engineering (MBSE)?")
@@ -55,10 +56,10 @@ requirements, and interactions — enabling teams to **simulate and optimise bef
 """)
 
 st.image(
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/MBSE_diagram_v2.png/600px-MBSE_diagram_v2.png",
-    caption="🔄 The MBSE Workflow: From Requirements to Validation", use_container_width=True
+    "https://upload.wikimedia.org/wikipedia/chttps:/commons.wikimedia.org/wiki/File:MBSE-Vorteile.jpg",
+    caption="🔄 The MBSE Workflow: From Requirements to Validation",
+    use_container_width=True
 )
-
 st.markdown("""
 ### 🚀 Why MBSE is Transformative for Companies
 - 🧩 **Integrates disciplines** — mechanical, electrical, and control engineers work in a single ecosystem.  
@@ -71,8 +72,6 @@ st.markdown("""
 MBSE brings a **digital transformation** to engineering organisations, enabling them to:
 - Enhance **collaboration** across teams and suppliers.  
 - Reduce **development costs** and time-to-market.  
-- Deliver **higher reliability** and more sustainable designs.  
-
 ---
 
 """)
