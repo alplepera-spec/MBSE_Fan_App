@@ -256,86 +256,184 @@ st.plotly_chart(fig_pareto, use_container_width=True)
 st.success(f"{(test_data['Status']=='✅ OK').sum()} out of {len(test_data)} configurations meet all requirements.")
 
 # ============================================================
-# Step 8 — Virtual Exploration
+# Step 8 — Virtual Exploration (2-variable impact + Performance Zone)
 # ============================================================
 
-st.header("🧠 Step 8 — Virtual Exploration")
+st.header("🧠 Step 8 — Virtual Exploration — Multivariable Impact & Performance Zone")
 st.markdown("""
-In this final step, MBSE integrates **machine learning surrogate models** to virtually explore new designs.  
-Even untested configurations can be predicted — saving time, cost, and enabling innovation.
+In this advanced step, MBSE integrates **machine learning surrogate models**  
+to explore the effect of **two design variables simultaneously** (e.g., flow & noise, flow & cost).  
+The visualization now includes a **Performance Zone**, showing where configurations meet all system requirements.  
 """)
 
-# Prepare surrogate models
-X = test_data[['Flow rate (m³/h)']]
-y_eff = test_data['Efficiency (%)']
-y_noise = test_data['Noise (dB)']
-y_cost = test_data['Total Cost (€)']
+# Variabili disponibili
+features = ['Flow rate (m³/h)', 'Efficiency (%)', 'Noise (dB)', 'Total Cost (€)', 'Current (A)']
+targets = ['Efficiency (%)', 'Noise (dB)', 'Total Cost (€)', 'Flow rate (m³/h)', 'Current (A)']
 
-model_eff = RandomForestRegressor(n_estimators=200, random_state=0)
-model_noise = RandomForestRegressor(n_estimators=200, random_state=0)
-model_cost = RandomForestRegressor(n_estimators=200, random_state=0)
-
-model_eff.fit(X, y_eff)
-model_noise.fit(X, y_noise)
-model_cost.fit(X, y_cost)
-
-flow_input = st.slider("Select Flow rate to explore (m³/h)", 1800, 2400, 2100, step=10)
-eff_pred = model_eff.predict([[flow_input]])[0]
-noise_pred = model_noise.predict([[flow_input]])[0]
-cost_pred = model_cost.predict([[flow_input]])[0]
-
-colA, colB, colC = st.columns(3)
+colA, colB = st.columns(2)
 with colA:
-    st.metric("Predicted Efficiency (%)", f"{eff_pred:.2f}")
+    var_x = st.selectbox("Select first variable (X)", features, index=0)
 with colB:
-    st.metric("Predicted Noise (dB)", f"{noise_pred:.2f}")
-with colC:
-    st.metric("Predicted Cost (€)", f"{cost_pred:.2f}")
+    var_y = st.selectbox("Select second variable (Y)", [f for f in features if f != var_x], index=2)
 
-flow_range = np.linspace(1800, 2400, 100).reshape(-1, 1)
-eff_curve = model_eff.predict(flow_range)
-noise_curve = model_noise.predict(flow_range)
-cost_curve = model_cost.predict(flow_range)
+# Variabili rimanenti da predire
+remaining_targets = [v for v in targets if v not in [var_x, var_y]]
 
-fig_virtual = go.Figure()
-fig_virtual.add_trace(go.Scatter(
-    x=test_data['Flow rate (m³/h)'], y=test_data['Efficiency (%)'],
-    mode='markers', name='Test Efficiency', marker=dict(color='red', size=8)
-))
-fig_virtual.add_trace(go.Scatter(
-    x=flow_range.flatten(), y=eff_curve,
-    mode='lines', name='Predicted Efficiency', line=dict(color='red', width=2)
-))
-fig_virtual.add_trace(go.Scatter(
-    x=test_data['Flow rate (m³/h)'], y=test_data['Noise (dB)'],
-    mode='markers', name='Test Noise', marker=dict(color='blue', size=8, symbol='square')
-))
-fig_virtual.add_trace(go.Scatter(
-    x=flow_range.flatten(), y=noise_curve,
-    mode='lines', name='Predicted Noise', line=dict(color='blue', dash='dash')
-))
-fig_virtual.add_trace(go.Scatter(
-    x=test_data['Flow rate (m³/h)'], y=test_data['Total Cost (€)'],
-    mode='markers', name='Test Cost', marker=dict(color='green', size=8, symbol='triangle-up')
-))
-fig_virtual.add_trace(go.Scatter(
-    x=flow_range.flatten(), y=cost_curve,
-    mode='lines', name='Predicted Cost', line=dict(color='green', dash='dot')
+# Addestra modelli RandomForest
+X = test_data[[var_x, var_y]]
+models = {}
+for target in remaining_targets:
+    model = RandomForestRegressor(n_estimators=200, random_state=0)
+    model.fit(X, test_data[target])
+    models[target] = model
+
+# Slider per impostare i valori correnti
+col1, col2 = st.columns(2)
+with col1:
+    x_value = st.slider(f"{var_x}", float(test_data[var_x].min()), float(test_data[var_x].max()),
+                        float(test_data[var_x].mean()), step=1.0)
+with col2:
+    y_value = st.slider(f"{var_y}", float(test_data[var_y].min()), float(test_data[var_y].max()),
+                        float(test_data[var_y].mean()), step=1.0)
+
+# Predizioni per i target rimanenti
+predictions = {target: models[target].predict([[x_value, y_value]])[0] for target in remaining_targets}
+
+# Mostra i risultati predetti
+st.subheader("🔮 Predicted System Responses")
+cols = st.columns(len(predictions))
+for idx, (target, value) in enumerate(predictions.items()):
+    with cols[idx]:
+        st.metric(f"{target}", f"{value:.2f}")
+
+# ============================================================
+# Visualizzazione superfici con Performance Zone
+# ============================================================
+
+st.markdown("### 🌈 Response Surface Visualization + Performance Zone")
+
+response_target = st.selectbox("Select parameter to visualize", remaining_targets, index=0)
+
+# Crea griglia di punti
+x_range = np.linspace(test_data[var_x].min(), test_data[var_x].max(), 40)
+y_range = np.linspace(test_data[var_y].min(), test_data[var_y].max(), 40)
+xx, yy = np.meshgrid(x_range, y_range)
+grid = np.c_[xx.ravel(), yy.ravel()]
+
+# Predici tutte le grandezze
+Z_pred = {target: models[target].predict(grid).reshape(xx.shape) for target in remaining_targets}
+Z = Z_pred[response_target]
+
+# Calcola la performance zone (basata sui requisiti attuali Step 5)
+perf_mask = np.ones_like(xx, dtype=bool)
+
+if 'Flow rate (m³/h)' in Z_pred:
+    perf_mask &= (Z_pred['Flow rate (m³/h)'] >= req_flow)
+if 'Efficiency (%)' in Z_pred:
+    perf_mask &= (Z_pred['Efficiency (%)'] >= req_eff)
+if 'Noise (dB)' in Z_pred:
+    perf_mask &= (Z_pred['Noise (dB)'] <= req_noise)
+if 'Total Cost (€)' in Z_pred:
+    perf_mask &= (Z_pred['Total Cost (€)'] <= req_cost)
+if 'Current (A)' in Z_pred:
+    perf_mask &= (Z_pred['Current (A)'] <= req_curr)
+
+# --- Grafico 3D con Performance Zone ---
+fig_3d = go.Figure()
+
+# Superficie principale
+fig_3d.add_trace(go.Surface(
+    x=xx, y=yy, z=Z,
+    colorscale='Viridis',
+    showscale=True,
+    colorbar=dict(title=response_target),
+    opacity=0.9
 ))
 
-fig_virtual.add_vline(x=flow_input, line_color="black", line_dash="dot",
-                      annotation_text="Selected Flow", annotation_position="top left")
+# Superficie trasparente per zona conforme
+fig_3d.add_trace(go.Surface(
+    x=xx, y=yy, z=np.where(perf_mask, Z, np.nan),
+    colorscale=[[0, 'rgba(0,255,0,0.5)'], [1, 'rgba(0,255,0,0.5)']],
+    showscale=False,
+    name='Performance Zone',
+    opacity=0.4
+))
 
-fig_virtual.update_layout(
-    title="Predicted Efficiency, Noise & Cost vs Flow rate",
-    xaxis_title="Flow rate (m³/h)",
-    yaxis_title="Value",
+# Punto selezionato
+fig_3d.add_trace(go.Scatter3d(
+    x=[x_value], y=[y_value], z=[predictions[response_target]],
+    mode='markers+text',
+    text=['Selected Point'],
+    textposition='top center',
+    marker=dict(color='red', size=6, symbol='circle')
+))
+
+fig_3d.update_layout(
+    title=f"3D Surface — {response_target} vs {var_x} & {var_y}",
+    scene=dict(
+        xaxis_title=var_x,
+        yaxis_title=var_y,
+        zaxis_title=response_target
+    ),
+    height=650,
+    margin=dict(l=0, r=0, t=40, b=0)
+)
+
+# --- Heatmap 2D con Performance Zone ---
+fig_2d = go.Figure()
+
+# Contour base
+fig_2d.add_trace(go.Contour(
+    z=Z,
+    x=x_range,
+    y=y_range,
+    colorscale='Viridis',
+    contours_coloring='heatmap',
+    colorbar_title=response_target
+))
+
+# Overlay zona conforme (verde trasparente)
+fig_2d.add_trace(go.Contour(
+    z=np.where(perf_mask, 1, np.nan),
+    x=x_range,
+    y=y_range,
+    showscale=False,
+    colorscale=[[0, 'rgba(0,255,0,0.3)'], [1, 'rgba(0,255,0,0.3)']],
+    hoverinfo='skip',
+    name='Performance Zone'
+))
+
+# Punto selezionato
+fig_2d.add_trace(go.Scatter(
+    x=[x_value],
+    y=[y_value],
+    mode='markers+text',
+    text=['Selected Point'],
+    textposition='top center',
+    marker=dict(color='red', size=10, symbol='x'),
+    name='Selected'
+))
+
+fig_2d.update_layout(
+    title=f"2D Heatmap — {response_target} vs {var_x} & {var_y}",
+    xaxis_title=var_x,
+    yaxis_title=var_y,
     height=600,
     margin=dict(l=0, r=0, t=40, b=0)
 )
-st.plotly_chart(fig_virtual, use_container_width=True)
 
-st.info("Use the slider above to explore predicted performance and cost of virtual (not-tested) configurations.")
+# Mostra i due grafici in colonne
+col3d, col2d = st.columns(2)
+with col3d:
+    st.plotly_chart(fig_3d, use_container_width=True)
+with col2d:
+    st.plotly_chart(fig_2d, use_container_width=True)
+
+st.info(f"""
+Use the sliders above to vary **{var_x}** and **{var_y}**.  
+✅ The **Performance Zone** (green area) highlights the region where all requirements are met  
+(flow ≥ {req_flow}, eff ≥ {req_eff}, noise ≤ {req_noise}, cost ≤ {req_cost}, current ≤ {req_curr}).
+""")
 
 
 # ============================================================
