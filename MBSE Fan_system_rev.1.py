@@ -80,7 +80,7 @@ MBSE brings a **digital transformation** to engineering organisations, enabling 
 # Step 1 — Define System Requirements
 # ============================================================
 
-st.header("📘 Step 1 — Define System Requirements")
+st.header("📘 Step 1 — Define System Requirements for a New Axial Fan C Series")
 st.markdown("""
 In MBSE, the process begins with **formalising system requirements** —  
 quantitative targets that the design must meet, such as flow rate, efficiency, noise level, or current draw.  
