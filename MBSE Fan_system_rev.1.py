@@ -252,6 +252,9 @@ fig_pareto = px.scatter(
     text='Config ID',
     color_discrete_map={'✅ OK': '#2E8B57', '⚠️ NOK': '#B22222'}
 )
+# change position of the text labels (options: 'top left', 'top center', 'top right', 
+# 'middle left', 'middle center', 'middle right', 'bottom left', 'bottom center', 'bottom right')
+fig_pareto.update_traces(textposition='top center', textfont=dict(size=11))
 st.plotly_chart(fig_pareto, use_container_width=True)
 
 st.success(f"{(test_data['Status']=='✅ OK').sum()} out of {len(test_data)} configurations meet all requirements.")
